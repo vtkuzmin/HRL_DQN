@@ -360,11 +360,10 @@ class ReplayBuffer(object):
         self.action[idx] = action
         self.reward[idx] = reward
         self.done[idx] = done
-        
+
+
 class ReplayBufferOptions(ReplayBuffer):
-    
     def __init__(self, size, frame_history_len):
-        
         self.size = size
         self.frame_history_len = frame_history_len
 
@@ -376,7 +375,7 @@ class ReplayBufferOptions(ReplayBuffer):
         self.reward = None
         self.done = None
         self.opt_steps = None
-        
+
     def _encode_sample(self, idxes):
         obs_batch = np.concatenate([self._encode_observation(idx)[None] for idx in idxes], 0)
         act_batch = self.action[idxes]
@@ -386,7 +385,7 @@ class ReplayBufferOptions(ReplayBuffer):
         opt_steps = self.opt_steps[idxes]
 
         return obs_batch, act_batch, rew_batch, next_obs_batch, done_mask, opt_steps
-    
+
     def store_frame(self, frame):
         if self.obs is None:
             self.obs = np.empty([self.size] + list(frame.shape), dtype=np.uint8)
@@ -401,11 +400,9 @@ class ReplayBufferOptions(ReplayBuffer):
         self.num_in_buffer = min(self.size, self.num_in_buffer + 1)
 
         return ret
-    
+
     def store_effect(self, idx, action, reward, done, opt_steps):
         self.action[idx] = action
         self.reward[idx] = reward
         self.done[idx] = done
         self.opt_steps[idx] = opt_steps
-        
-    
