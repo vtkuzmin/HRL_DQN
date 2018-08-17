@@ -17,20 +17,22 @@ if nb_dir not in sys.path:
 
 from environments.arm_env_dqn import ArmEnvDQN
 
+
 def get_session():
     tf.reset_default_graph()
     session = tf.Session(config=tf.ConfigProto(log_device_placement=True))
     session = tf.Session()
     return session
 
+
 env = ArmEnvDQN(episode_max_length=200,
-                 size_x=6,
-                 size_y=4,
-                 cubes_cnt=4,
-                 scaling_coeff=3,
-                 action_minus_reward=-1,
-                 finish_reward=200,
-                 tower_target_size=4)
+                size_x=4,
+                size_y=3,
+                cubes_cnt=3,
+                scaling_coeff=3,
+                action_minus_reward=-1,
+                finish_reward=200,
+                tower_target_size=3)
 
 
 def conv_model(input_data, scope, flatten=True, reuse=False):
@@ -89,13 +91,14 @@ with tf.Session() as session:
 
     with tf.variable_scope("check_option"):
         options_check = tf.concat(options_checkers, 1, name="options_check")
-        cond = tf.cast(tf.reduce_sum(tf.multiply(options_check, prev_action[:, 1:]), axis=1), tf.bool, name='cond')
+        cond = tf.greater_equal(tf.reduce_sum(tf.multiply(options_check, prev_action[:, 1:]), axis=1), 0.5, name='cond')
+    # cond = tf.cast(opt_check2, tf.bool, name = 'cond')
 
     # SELECT on whether the option terminated
     with tf.variable_scope("subselect"):
         one_hot0 = tf.where(cond, manager_one_hot, prev_action, name="select1")
 
-    # SELECT on if ot was option or not
+    # SELECT on if it was option or not
     with tf.variable_scope("select_task"):
         one_hot = tf.where(tf.cast(prev_action[:, 0], tf.bool), manager_one_hot, one_hot0, name="select2")
 
@@ -103,6 +106,45 @@ with tf.Session() as session:
              for i in range(num_options + 1)]
 
     with tf.variable_scope("action"):
-        action = tf.boolean_mask(tasks, tf.cast(one_hot, tf.bool), name="get_task")
+        pred_q = tf.boolean_mask(tf.transpose(tasks, perm=[1, 0, 2]), tf.cast(one_hot, tf.bool), name="get_task")
+        pred_ac = tf.argmax(pred_q, axis=1, name="pred_ac")
+
+    session.run(tf.global_variables_initializer())
+
+    saver1 = tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="convolution"))
+    saver2 = tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="task0"))
+    saver3 = tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="task1"))
+    saver4 = tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="task2"))
+
+    saver1.restore(session, '../experiments/plain DQN/task0/saved_model/conv_graph.ckpt')
+    saver2.restore(session, '../experiments/plain DQN/task0/saved_model/flat_graph.ckpt')
+    saver3.restore(session, '../experiments/plain DQN/task1/saved_model/graph.ckpt')
+    saver4.restore(session, '../experiments/plain DQN/task2/saved_model/graph.ckpt')
+
+    print(session.run(manager_one_hot,
+                      {obs_t_ph: [env.get_evidence_for_image_render(), env.get_evidence_for_image_render()],
+                       prev_action: [[1, 0, 0], [1, 0, 0]]}))
+    print(session.run(options_checkers,
+                      {obs_t_ph: [env.get_evidence_for_image_render(), env.get_evidence_for_image_render()],
+                       prev_action: [[1, 0, 0], [1, 0, 0]]}))
+    print(session.run(options_check,
+                      {obs_t_ph: [env.get_evidence_for_image_render(), env.get_evidence_for_image_render()],
+                       prev_action: [[1, 0, 0], [1, 0, 0]]}))
+    #     print(session.run(opt_check2, {obs_t_ph: [env.get_evidence_for_image_render(), env.get_evidence_for_image_render()], prev_action: [[1,0,0], [1,0,0]]}))
+    print(session.run(cond, {obs_t_ph: [env.get_evidence_for_image_render(), env.get_evidence_for_image_render()],
+                             prev_action: [[1, 0, 0], [1, 0, 0]]}))
+    print(session.run(one_hot0, {obs_t_ph: [env.get_evidence_for_image_render(), env.get_evidence_for_image_render()],
+                                 prev_action: [[1, 0, 0], [1, 0, 0]]}))
+    print(session.run(one_hot, {obs_t_ph: [env.get_evidence_for_image_render(), env.get_evidence_for_image_render()],
+                                prev_action: [[1, 0, 0], [1, 0, 0]]}))
+    print(session.run(tasks, {obs_t_ph: [env.get_evidence_for_image_render(), env.get_evidence_for_image_render()],
+                              prev_action: [[1, 0, 0], [1, 0, 0]]}))
+    print(len(session.run(tasks, {obs_t_ph: [env.get_evidence_for_image_render(), env.get_evidence_for_image_render()],
+                                  prev_action: [[1, 0, 0], [1, 0, 0]]})))
+    print(session.run(tf.cast(one_hot, tf.bool),
+                      {obs_t_ph: [env.get_evidence_for_image_render(), env.get_evidence_for_image_render()],
+                       prev_action: [[1, 0, 0], [1, 0, 0]]}))
+    print(session.run(pred_ac, {obs_t_ph: [env.get_evidence_for_image_render(), env.get_evidence_for_image_render()],
+                                prev_action: [[1, 0, 0], [1, 0, 0]]}))
 
     summary_writer = tf.summary.FileWriter("graph_logs", graph=tf.get_default_graph())
