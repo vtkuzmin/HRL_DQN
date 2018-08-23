@@ -29,7 +29,7 @@ def learn(env,
           log_every_n_steps=500,
           spec_file=None,
           exp_dir=None):
-    """Run Deep Q-learning algorithm.
+    """Run Deep Q-learning algorithm. 
 
     All schedules are w.r.t. total number of steps taken in the environment.
 
@@ -181,11 +181,16 @@ def learn(env,
     best_mean_episode_reward = -float('inf')
     last_obs = env.reset()
     LOG_EVERY_N_STEPS = log_every_n_steps
+    # obs_file = open(exp_dir + '/obs_dataset.txt', 'a')
+    # done_file = open(exp_dir + '/done_dataset.txt', 'a')
 
     # as we need to save only Q-network weights
     saver = tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="task1"))
 
     saver0 = tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="convolution"))
+
+    obs_dataset = []
+    done_dataset = []
 
     for t in itertools.count():
         ### 1. Check stopping criterion
@@ -205,6 +210,18 @@ def learn(env,
             action = session.run(pred_ac, {obs_t_ph: [obs]})[0]
 
         next_obs, reward, done, info = env.step(action)
+
+        # comment if don't want to collect dataset
+        # obs_file.write(str(next_obs) + 'next')
+        # done_file.write(str(done) + '\n')
+
+        flag = 1
+        for i in obs_dataset:
+            if np.array_equal(i, next_obs):
+                flag = 0
+        if flag:
+            obs_dataset.append(next_obs)
+            done_dataset.append(int(done))
 
         # Store the outcome
         replay_buffer.store_effect(idx, action, reward, done)
@@ -284,6 +301,9 @@ def learn(env,
             print("learning_rate %f" % optimizer_spec.lr_schedule.value(t))
             print("\n")
             sys.stdout.flush()
+
+    np.save(exp_dir + "/obs_dataset.npy", obs_dataset)
+    np.save(exp_dir + "/done_dataset.npy", done_dataset)
 
     meta_graph_def = tf.train.export_meta_graph(filename=exp_dir + '/saved_model/graph.ckpt.meta')
     save_path = saver.save(session, exp_dir + '/saved_model/graph.ckpt', write_meta_graph=False)
