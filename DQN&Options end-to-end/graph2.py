@@ -89,9 +89,12 @@ with tf.Session() as session:
     options_checkers = [tf.argmax(mlp_model(convolution, 2, scope='opt{0}_checker'.format(i + 1), reuse=False), axis=1)
                         for i in range(num_options)]
 
+    for i in range(len(options_checkers)):
+        options_checkers[i] = tf.reshape(options_checkers[i], (tf.shape(options_checkers[i])[0], 1))
+
     with tf.variable_scope("check_option"):
-        options_check = tf.concat(options_checkers, 1, name="options_check")
-        cond = tf.reduce_sum(tf.multiply(options_check, prev_action[:, 1:]), axis=1, name="cond")
+        options_check = tf.cast(tf.concat(options_checkers, 1, name="options_check"), tf.float32)
+        cond = tf.cast(tf.reduce_sum(tf.multiply(options_check, prev_action[:, 1:]), axis=1), tf.bool, name='cond')
     # cond = tf.cast(opt_check2, tf.bool, name = 'cond')
 
     # SELECT on whether the option terminated

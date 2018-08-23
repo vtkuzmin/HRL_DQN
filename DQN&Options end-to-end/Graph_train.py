@@ -86,12 +86,12 @@ with tf.Session() as session:
         manager_one_hot = tf.one_hot(manager_pred_ac, depth=num_options + 1, name="manager_one_hot")
 
     # NETs to check if the option is terminated
-    options_checkers = [tf.argmax(mlp_model(convolution, 2, scope='opt{0}_checker'.format(i + 1), reuse=False), axis=1)
+    options_checkers = [mlp_model(convolution, 1, scope='opt{0}_checker'.format(i + 1), reuse=False)
                         for i in range(num_options)]
 
     with tf.variable_scope("check_option"):
         options_check = tf.concat(options_checkers, 1, name="options_check")
-        cond = tf.reduce_sum(tf.multiply(options_check, prev_action[:, 1:]), axis=1, name="cond")
+        cond = tf.greater_equal(tf.reduce_sum(tf.multiply(options_check, prev_action[:, 1:]), axis=1), 0.5, name='cond')
     # cond = tf.cast(opt_check2, tf.bool, name = 'cond')
 
     # SELECT on whether the option terminated
@@ -115,18 +115,15 @@ with tf.Session() as session:
     saver2 = tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="task0"))
     saver3 = tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="task1"))
     saver4 = tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="task2"))
-    saver5 = tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="opt1_checker"))
-    saver6 = tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="opt2_checker"))
 
     saver1.restore(session, '../experiments/DQN&Options end-to-end/task0/saved_model/conv_graph.ckpt')
     saver2.restore(session, '../experiments/DQN&Options end-to-end/task0/saved_model/flat_graph.ckpt')
     saver3.restore(session, '../experiments/DQN&Options end-to-end/task1/saved_model/graph.ckpt')
     saver4.restore(session, '../experiments/DQN&Options end-to-end/task2/saved_model/graph.ckpt')
-    saver5.restore(session, '../experiments/DQN&Options end-to-end/checker1/saved_model/graph.ckpt')
-    saver6.restore(session, '../experiments/DQN&Options end-to-end/checker2/saved_model/graph.ckpt')
 
     env.step(3)
     env.step(3)
+
 
     print(session.run(manager_one_hot,
                       {obs_t_ph: [env.get_evidence_for_image_render(), env.get_evidence_for_image_render()],
