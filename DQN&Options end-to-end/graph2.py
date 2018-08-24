@@ -121,12 +121,12 @@ with tf.Session() as session:
     saver5 = tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="opt1_checker"))
     saver6 = tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="opt2_checker"))
 
-    saver1.restore(session, '../experiments/DQN&Options end-to-end/task0/saved_model/conv_graph.ckpt')
-    saver2.restore(session, '../experiments/DQN&Options end-to-end/task0/saved_model/flat_graph.ckpt')
-    saver3.restore(session, '../experiments/DQN&Options end-to-end/task1/saved_model/graph.ckpt')
-    saver4.restore(session, '../experiments/DQN&Options end-to-end/task2/saved_model/graph.ckpt')
-    saver5.restore(session, '../experiments/DQN&Options end-to-end/checker1/saved_model/graph.ckpt')
-    saver6.restore(session, '../experiments/DQN&Options end-to-end/checker2/saved_model/graph.ckpt')
+    saver1.restore(session, '../experiments/DQN&Options end-to-end/experiment task0/saved_model/conv_graph.ckpt')
+    saver2.restore(session, '../experiments/DQN&Options end-to-end/experiment task0/saved_model/flat_graph.ckpt')
+    saver3.restore(session, '../experiments/DQN&Options end-to-end/experiment task1/saved_model/graph.ckpt')
+    saver4.restore(session, '../experiments/DQN&Options end-to-end/experiment task2/saved_model/graph.ckpt')
+    saver5.restore(session, '../experiments/DQN&Options end-to-end/experiment checker1/saved_model/graph.ckpt')
+    saver6.restore(session, '../experiments/DQN&Options end-to-end/experiment checker2/saved_model/graph.ckpt')
 
     env.step(3)
     env.step(3)
@@ -157,4 +157,4 @@ with tf.Session() as session:
     print(session.run(pred_ac, {obs_t_ph: [env.get_evidence_for_image_render(), env.get_evidence_for_image_render()],
                                 prev_action: [[1, 0, 0], [1, 0, 0]]}))
 
-    summary_writer = tf.summary.FileWriter("graph_logs", graph=tf.get_default_graph())
+    # summary_writer = tf.summary.FileWriter("graph_logs", graph=tf.get_default_graph())

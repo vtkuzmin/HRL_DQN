@@ -16,7 +16,7 @@ nb_dir = os.path.split(os.getcwd())[0]
 if nb_dir not in sys.path:
     sys.path.append(nb_dir)
 
-import dqn_partial as dqn
+import dqn_task0 as dqn
 from utils.dqn_utils import *
 from environments.arm_env_dqn import ArmEnvDQN
 import utils.plotting as plotting
@@ -40,10 +40,8 @@ def mlp_model(input_data, output_len, scope, reuse=False):
         out = layers.fully_connected(out, num_outputs=output_len, activation_fn=None)
         return out
 
-def arm_learn(env, session, num_timesteps, spec_file=None, exp_dir=None):
-    # # This is just a rough estimate
-    # num_iterations = float(num_timesteps) / 4.0
 
+def arm_learn(env, session, num_timesteps, spec_file=None, exp_dir=None):
     lr_multiplier = 1.0
     lr_schedule = PiecewiseSchedule([
         (0, 1e-4 * lr_multiplier),
@@ -140,32 +138,32 @@ def main():
                     tower_target_size=3)
 
     # create a new folder for this experiment
-    os.chdir('../experiments/plain DQN/')
-    dir_name = "experiment " + str(datetime.datetime.now())[:-10]
+    os.chdir('../experiments/DQN&Options end-to-end/')
+    dir_name = "experiment task0 " + str(datetime.datetime.now())[:-10]
     createFolder(dir_name)
-    os.chdir('../../DQN/')
+    os.chdir('../../DQN&Options end-to-end/')
 
-    f = open('../experiments/plain DQN/' + dir_name + '/specifications.txt', 'a').close()
-    env.write_env_spec('../experiments/plain DQN/' + dir_name + '/specifications.txt')
+    f = open('../experiments/DQN&Options end-to-end/' + dir_name + '/specifications.txt', 'a').close()
+    env.write_env_spec('../experiments/DQN&Options end-to-end/' + dir_name + '/specifications.txt')
 
     session = get_session()
     ep_rew, ep_len = arm_learn(env, session, num_timesteps=150000,
-                               spec_file='../experiments/plain DQN/' + dir_name + '/specifications.txt',
-                               exp_dir='../experiments/plain DQN/' + dir_name)
+                               spec_file='../experiments/DQN&Options end-to-end/' + dir_name + '/specifications.txt',
+                               exp_dir='../experiments/DQN&Options end-to-end/' + dir_name)
 
     # add results
-    thefile1 = open('../experiments/plain DQN/' + dir_name + '/ep_rewards.txt', 'w')
+    thefile1 = open('../experiments/DQN&Options end-to-end/' + dir_name + '/ep_rewards.txt', 'w')
     for item in ep_rew:
         thefile1.write("%s\n" % item)
 
-    thefile2 = open('../experiments/plain DQN/' + dir_name + '/ep_lengths.txt', 'w')
+    thefile2 = open('../experiments/DQN&Options end-to-end/' + dir_name + '/ep_lengths.txt', 'w')
     for item in ep_len:
         thefile2.write("%s\n" % item)
 
     stats = plotting.EpisodeStats(
         episode_lengths=ep_len,
         episode_rewards=ep_rew)
-    plotting.plot_episode_stats(stats, save_fig=True, fig_dir='../experiments/plain DQN/' + dir_name + '/',
+    plotting.plot_episode_stats(stats, save_fig=True, fig_dir='../experiments/DQN&Options end-to-end/' + dir_name + '/',
                                 fig_name='smoothed_')
 
 

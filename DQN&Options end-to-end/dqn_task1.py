@@ -1,3 +1,5 @@
+# this file is needed to train task1 (the first option) in the graph (it's a plain dqn for task1)
+
 import sys
 import gym.spaces
 import itertools
@@ -241,7 +243,8 @@ def learn(env,
                     obs_t_ph: obs_batch,
                     obs_tp1_ph: next_obs_batch,
                 })
-                saver0.restore(session, '../experiments/plain DQN/task0/saved_model/conv_graph.ckpt')
+                saver0.restore(session,
+                               '../experiments/DQN&Options end-to-end/experiment task0/saved_model/conv_graph.ckpt')
                 session.run(update_target_fn)
                 model_initialized = True
 

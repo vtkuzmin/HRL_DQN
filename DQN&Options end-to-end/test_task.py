@@ -121,8 +121,8 @@ def main():
     saver1 = tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="convolution"))
     saver2 = tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="task2"))
 
-    saver1.restore(session, '../experiments/plain DQN/task0/saved_model/conv_graph.ckpt')
-    saver2.restore(session, '../experiments/plain DQN/task2/saved_model/graph.ckpt')
+    saver1.restore(session, '../experiments/DQN&Options end-to-end/experiment task0/saved_model/conv_graph.ckpt')
+    saver2.restore(session, '../experiments/DQN&Options end-to-end/experiment task2/saved_model/graph.ckpt')
 
     for t in itertools.count():
 

@@ -113,7 +113,7 @@ def learn(env,
     obs_t_float = tf.realdiv(tf.cast(obs_t_ph, tf.float32), 255.0, name='obs_t_float')
 
     conv = conv_net(obs_t_float, scope="convolution", reuse=False)
-    pred_q = q_func(conv, num_actions, scope="task0", reuse=False)
+    pred_q = q_func(conv, num_actions, scope="task2", reuse=False)
     pred_ac = tf.argmax(pred_q, axis=1, name="pred_ac")
 
     # placeholder for current action
@@ -134,7 +134,7 @@ def learn(env,
         pred_q_a = tf.reduce_sum(pred_q * tf.one_hot(act_t_ph, depth=num_actions), axis=1, name='pred_q_a')
 
     target_q_conv = conv_net(obs_tp1_float, scope="convolution_target_q_func", reuse=False)
-    target_q = q_func(target_q_conv, num_actions, scope="task0_target_q_func", reuse=False)
+    target_q = q_func(target_q_conv, num_actions, scope="task2_target_q_func", reuse=False)
 
     with tf.variable_scope("target_q_a"):
         target_q_a = rew_t_ph + (1 - done_mask_ph) * gamma * tf.reduce_max(target_q, axis=1)
@@ -146,16 +146,16 @@ def learn(env,
     with tf.variable_scope("Hold_the_var"):
         # Hold all of the variables of the Q-function network and target network, respectively.
         q_func_vars0 = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="convolution")
-        q_func_vars1 = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="task0")
+        q_func_vars1 = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="task2")
         target_q_func_vars0 = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='convolution_target_q_func')
-        target_q_func_vars1 = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='task0_target_q_func')
+        target_q_func_vars1 = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='task2_target_q_func')
 
     # construct optimization op (with gradient clipping)
     learning_rate = tf.placeholder(tf.float32, (), name="learning_rate")
     with tf.variable_scope("Optimizer"):
         optimizer = optimizer_spec.constructor(learning_rate=learning_rate, **optimizer_spec.kwargs)
         train_fn = minimize_and_clip(optimizer, total_error,
-                                     var_list=q_func_vars0 + q_func_vars1, clip_val=grad_norm_clipping)
+                                     var_list=q_func_vars1, clip_val=grad_norm_clipping)
 
     # update_target_fn will be called periodically to copy Q network to target Q network
     update_target_fn = []
@@ -181,10 +181,16 @@ def learn(env,
     best_mean_episode_reward = -float('inf')
     last_obs = env.reset()
     LOG_EVERY_N_STEPS = log_every_n_steps
+    # obs_file = open(exp_dir + '/obs_dataset.txt', 'a')
+    # done_file = open(exp_dir + '/done_dataset.txt', 'a')
 
     # as we need to save only Q-network weights
-    saver1 = tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="convolution"))
-    saver2 = tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="task0"))
+    saver = tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="task2"))
+
+    saver0 = tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="convolution"))
+
+    obs_dataset = []
+    done_dataset = []
 
     for t in itertools.count():
         ### 1. Check stopping criterion
@@ -205,6 +211,16 @@ def learn(env,
 
         next_obs, reward, done, info = env.step(action)
 
+        # obs_file.write(str(next_obs) + '\n')
+        # done_file.write(str(done) + '\n')
+        flag = 1
+        for i in obs_dataset:
+            if np.array_equal(i, next_obs):
+                flag = 0
+        if flag:
+            obs_dataset.append(next_obs)
+            done_dataset.append(int(done))
+
         # Store the outcome
         replay_buffer.store_effect(idx, action, reward, done)
         last_obs = env.reset() if done else next_obs
@@ -223,6 +239,8 @@ def learn(env,
                     obs_t_ph: obs_batch,
                     obs_tp1_ph: next_obs_batch,
                 })
+                saver0.restore(session,
+                               '../experiments/DQN&Options end-to-end/experiment task0/saved_model/conv_graph.ckpt')
                 session.run(update_target_fn)
                 model_initialized = True
 
@@ -283,9 +301,11 @@ def learn(env,
             print("\n")
             sys.stdout.flush()
 
+    np.save(exp_dir + "/obs_dataset.npy", obs_dataset)
+    np.save(exp_dir + "/done_dataset.npy", done_dataset)
+
     meta_graph_def = tf.train.export_meta_graph(filename=exp_dir + '/saved_model/graph.ckpt.meta')
-    save_path = saver1.save(session, exp_dir + '/saved_model_conv/conv_graph.ckpt', write_meta_graph=False)
-    save_path2 = saver2.save(session, exp_dir + '/saved_model_flat/flat_graph.ckpt', write_meta_graph=False)
+    save_path = saver.save(session, exp_dir + '/saved_model/graph.ckpt', write_meta_graph=False)
     print("Model saved in path: %s" % save_path)
     writer.add_graph(session.graph)
     writer.close()

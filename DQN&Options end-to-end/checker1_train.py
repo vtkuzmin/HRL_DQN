@@ -68,7 +68,7 @@ def train(conv_net,
     saver2 = tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="opt1_checker"))
 
     session.run(tf.global_variables_initializer())
-    saver1.restore(session, '../experiments/DQN&Options end-to-end/task0/saved_model/conv_graph.ckpt')
+    saver1.restore(session, '../experiments/DQN&Options end-to-end/experiment task0/saved_model/conv_graph.ckpt')
 
     iterations = int(len(X_train) / batch_size)
 
@@ -136,8 +136,8 @@ def main():
 
     session = get_session()
 
-    X_dataset = np.load('../experiments/DQN&Options end-to-end/experiment task1 dataset/obs_dataset.npy')
-    y_datatset = np.load('../experiments/DQN&Options end-to-end/experiment task1 dataset/done_dataset.npy')
+    X_dataset = np.load('../experiments/DQN&Options end-to-end/experiment task1/obs_dataset.npy')
+    y_datatset = np.load('../experiments/DQN&Options end-to-end/experiment task1/done_dataset.npy')
 
     y_train = []
     for i in y_datatset:
