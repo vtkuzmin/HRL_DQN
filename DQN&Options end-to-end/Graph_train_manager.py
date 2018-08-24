@@ -12,7 +12,9 @@ OptimizerSpec = namedtuple("OptimizerSpec", ["constructor", "kwargs", "lr_schedu
 
 
 def learn(env,
-          q_func,
+          n_options,
+          conv_net,
+          mlp,
           optimizer_spec,
           session,
           scope_name,
@@ -26,8 +28,6 @@ def learn(env,
           frame_history_len=1,
           target_update_freq=1000,
           grad_norm_clipping=10):
-
-
     assert type(env.observation_space) == gym.spaces.Box
     assert type(env.action_space) == gym.spaces.Discrete
 
@@ -38,18 +38,53 @@ def learn(env,
         img_h, img_w, img_c = env.observation_space.shape
         input_shape = (img_h, img_w, frame_history_len * img_c)  # size_x, size_y,
 
-    # taking into account options
-    num_actions = env.action_space.n + len(options)
+    num_actions = env.action_space.n
 
-    ###  1. Set up placeholders
-    with tf.variable_scope(scope_name):
-        #         with tf.variable_scope("obs_t_ph"):
+    # INPUT DATA: previous action and image
+    prev_action = tf.placeholder(tf.float32, [None, n_options + 1], name="prev_action")
+
+    with tf.variable_scope('input_image'):
         # placeholder for current observation (or state)
         obs_t_ph = tf.placeholder(tf.uint8, [None] + list(input_shape), name="obs_t_ph")
         # casting to float on GPU ensures lower data transfer times.
         obs_t_float = tf.realdiv(tf.cast(obs_t_ph, tf.float32), 255.0, name='obs_t_float')
 
-        pred_q = q_func(obs_t_float, num_actions, scope="q_func", reuse=False)
+    # CONVOLUTION
+    convolution = conv_net(obs_t_float, scope="convolution", reuse=False)
+
+    # MANAGER
+    with tf.variable_scope("manager"):
+        manager = mlp(convolution, n_options + 1, scope="manager", reuse=False)
+        manager_pred_ac = tf.argmax(manager, axis=1, name="manager_pred_ac")
+        manager_one_hot = tf.one_hot(manager_pred_ac, depth=n_options + 1, name="manager_one_hot")
+
+    # NETs to check if the option is terminated
+    options_checkers = [tf.argmax(mlp(convolution, 2, scope='opt{0}_checker'.format(i + 1), reuse=False), axis=1)
+                        for i in range(n_options)]
+
+    for i in range(len(options_checkers)):
+        options_checkers[i] = tf.reshape(options_checkers[i], (tf.shape(options_checkers[i])[0], 1))
+
+    with tf.variable_scope("check_option"):
+        options_check = tf.cast(tf.concat(options_checkers, 1, name="options_check"), tf.float32)
+        cond = tf.cast(tf.reduce_sum(tf.multiply(options_check, prev_action[:, 1:]), axis=1), tf.bool, name='cond')
+    # cond = tf.cast(opt_check2, tf.bool, name = 'cond')
+
+    # SELECT on whether the option terminated
+    with tf.variable_scope("subselect"):
+        one_hot0 = tf.where(cond, manager_one_hot, prev_action, name="select1")
+
+    # SELECT on if it was option or not
+    with tf.variable_scope("select_task"):
+        one_hot = tf.where(tf.cast(prev_action[:, 0], tf.bool), manager_one_hot, one_hot0, name="select2")
+
+    # MLP to perform tasks
+    tasks = [mlp(convolution, num_actions, scope='task{0}'.format(i), reuse=False)
+             for i in range(n_options + 1)]
+
+    # OUTPUT: action that agent need to perform
+    with tf.variable_scope("action"):
+        pred_q = tf.boolean_mask(tf.transpose(tasks, perm=[1, 0, 2]), tf.cast(one_hot, tf.bool), name="get_task")
         pred_ac = tf.argmax(pred_q, axis=1, name="pred_ac")
 
     # placeholder for current action
@@ -70,36 +105,51 @@ def learn(env,
     opt_steps = tf.placeholder(tf.float32, [None], name="opt_steps")
 
     with tf.variable_scope("pred_q_a"):
-        pred_q_a = tf.reduce_sum(pred_q * tf.one_hot(act_t_ph, depth=num_actions), axis=1, name='pred_q_a')
+        manager_pred_q_a = tf.reduce_sum(manager * tf.one_hot(act_t_ph, depth=n_options + 1), axis=1, name='pred_q_a')
 
-    target_q = q_func(obs_tp1_float, num_actions, scope="target_q_func", reuse=False)
+    with tf.variable_scope("manager_target_net"):
+        target_conv = conv_net(obs_tp1_float, scope="target_convolution", reuse=False)
+        target_q = mlp(target_conv, n_options + 1, scope="manager_target_q_func", reuse=False)
 
     with tf.variable_scope("target_q_a"):
         target_q_a = rew_t_ph + (1 - done_mask_ph) * tf.pow(gamma, opt_steps) * tf.reduce_max(target_q, axis=1)
 
     with tf.variable_scope("Compute_bellman_error"):
-        total_error = tf.reduce_sum(huber_loss(pred_q_a - tf.stop_gradient(target_q_a)), name='total_error')
+        total_error = tf.reduce_sum(huber_loss(manager_pred_q_a - tf.stop_gradient(target_q_a)), name='total_error')
 
     with tf.variable_scope("Hold_the_var"):
         # Hold all of the variables of the Q-function network and target network, respectively.
-        q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=scope_name + '/q_func')
-        target_q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='target_q_func')
+        manager_conv_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='convolution')
+        manager_target_conv_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES,
+                                                     scope='manager_target_net/target_convolution')
+        manager_q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='manager/manager')
+        manager_target_q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES,
+                                                       scope='manager_target_net/manager_target_q_func')
 
     # construct optimization op (with gradient clipping)
     learning_rate = tf.placeholder(tf.float32, (), name="learning_rate")
     with tf.variable_scope("Optimizer"):
         optimizer = optimizer_spec.constructor(learning_rate=learning_rate, **optimizer_spec.kwargs)
         train_fn = minimize_and_clip(optimizer, total_error,
-                                     var_list=q_func_vars, clip_val=grad_norm_clipping)
+                                     var_list=manager_q_func_vars, clip_val=grad_norm_clipping)
 
     # update_target_fn will be called periodically to copy Q network to target Q network
     update_target_fn = []
-    for var, var_target in zip(sorted(q_func_vars, key=lambda v: v.name),
-                               sorted(target_q_func_vars, key=lambda v: v.name)):
+    for var, var_target in zip(sorted(manager_q_func_vars, key=lambda v: v.name),
+                               sorted(manager_target_q_func_vars, key=lambda v: v.name)):
         update_target_fn.append(var_target.assign(var))
 
     with tf.variable_scope("Update_target_fn"):
         update_target_fn = tf.group(*update_target_fn, name='update_target_fn')
+
+    # update_target_fn_conv will copy weights of convolution
+    update_target_fn_conv = []
+    for var, var_target in zip(sorted(manager_conv_vars, key=lambda v: v.name),
+                               sorted(manager_target_conv_vars, key=lambda v: v.name)):
+        update_target_fn_conv.append(var_target.assign(var))
+
+    with tf.variable_scope("Update_target_fn_conv"):
+        update_target_fn_conv = tf.group(*update_target_fn_conv, name='update_target_fn_conv')
 
     # construct the replay buffer with options
     replay_buffer = ReplayBufferOptions(replay_buffer_size, frame_history_len)
@@ -112,10 +162,24 @@ def learn(env,
     mean_episode_reward = -float('nan')
     best_mean_episode_reward = -float('inf')
     last_obs = env.reset()
+    previous_action = [[1, 0, 0]]
     LOG_EVERY_N_STEPS = 500
 
-    # saver = tf.train.Saver()
-    saver = tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=scope_name))
+    saver = tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='manager/manager'))
+
+    saver1 = tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="convolution"))
+    saver2 = tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="task0"))
+    saver3 = tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="task1"))
+    saver4 = tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="task2"))
+    saver5 = tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="opt1_checker"))
+    saver6 = tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="opt2_checker"))
+
+    saver1.restore(session, '../experiments/DQN&Options end-to-end/experiment task0/saved_model/conv_graph.ckpt')
+    saver2.restore(session, '../experiments/DQN&Options end-to-end/experiment task0/saved_model/flat_graph.ckpt')
+    saver3.restore(session, '../experiments/DQN&Options end-to-end/experiment task1/saved_model/graph.ckpt')
+    saver4.restore(session, '../experiments/DQN&Options end-to-end/experiment task2/saved_model/graph.ckpt')
+    saver5.restore(session, '../experiments/DQN&Options end-to-end/experiment checker1/saved_model/graph.ckpt')
+    saver6.restore(session, '../experiments/DQN&Options end-to-end/experiment checker2/saved_model/graph.ckpt')
 
     for t in itertools.count():
         ### 1. Check stopping criterion
@@ -129,7 +193,7 @@ def learn(env,
 
         # Epsilon greedy exploration
         if not model_initialized or random.random() < exploration.value(t):
-            action = random.randint(0, num_actions - 1)
+            action = random.randint(0, n_options)
         else:
             obs = replay_buffer.encode_recent_observation()
             action = session.run(pred_ac, {obs_t_ph: [obs]})[0]
@@ -224,5 +288,3 @@ def learn(env,
     meta_graph_def = tf.train.export_meta_graph(filename=scope_name + '/graph.ckpt.meta', export_scope=scope_name)
     save_path = saver.save(session, scope_name + '/graph.ckpt', write_meta_graph=False)
     print("Model saved in path: %s" % save_path)
-
-

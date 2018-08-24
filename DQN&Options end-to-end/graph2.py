@@ -130,31 +130,32 @@ with tf.Session() as session:
 
     env.step(3)
     env.step(3)
+    env.render()
 
-    print(session.run(manager_one_hot,
-                      {obs_t_ph: [env.get_evidence_for_image_render(), env.get_evidence_for_image_render()],
-                       prev_action: [[1, 0, 0], [1, 0, 0]]}))
+    # print(session.run(manager_one_hot,
+    #                   {obs_t_ph: [env.get_evidence_for_image_render(), env.get_evidence_for_image_render()],
+    #                    prev_action: [[1, 0, 0], [1, 0, 0]]}))
     print(session.run(options_checkers,
-                      {obs_t_ph: [env.get_evidence_for_image_render(), env.get_evidence_for_image_render()],
-                       prev_action: [[1, 0, 0], [1, 0, 0]]}))
+                      {obs_t_ph: [env.get_evidence_for_image_render()],
+                       prev_action: [[1, 0, 0]]}))
     print(session.run(options_check,
                       {obs_t_ph: [env.get_evidence_for_image_render(), env.get_evidence_for_image_render()],
                        prev_action: [[1, 0, 0], [1, 0, 0]]}))
-    #     print(session.run(opt_check2, {obs_t_ph: [env.get_evidence_for_image_render(), env.get_evidence_for_image_render()], prev_action: [[1,0,0], [1,0,0]]}))
+    # #     print(session.run(opt_check2, {obs_t_ph: [env.get_evidence_for_image_render(), env.get_evidence_for_image_render()], prev_action: [[1,0,0], [1,0,0]]}))
     print(session.run(cond, {obs_t_ph: [env.get_evidence_for_image_render(), env.get_evidence_for_image_render()],
                              prev_action: [[1, 0, 0], [1, 0, 0]]}))
-    print(session.run(one_hot0, {obs_t_ph: [env.get_evidence_for_image_render(), env.get_evidence_for_image_render()],
-                                 prev_action: [[1, 0, 0], [1, 0, 0]]}))
-    print(session.run(one_hot, {obs_t_ph: [env.get_evidence_for_image_render(), env.get_evidence_for_image_render()],
-                                prev_action: [[1, 0, 0], [1, 0, 0]]}))
-    print(session.run(tasks, {obs_t_ph: [env.get_evidence_for_image_render(), env.get_evidence_for_image_render()],
-                              prev_action: [[1, 0, 0], [1, 0, 0]]}))
-    print(len(session.run(tasks, {obs_t_ph: [env.get_evidence_for_image_render(), env.get_evidence_for_image_render()],
-                                  prev_action: [[1, 0, 0], [1, 0, 0]]})))
-    print(session.run(tf.cast(one_hot, tf.bool),
-                      {obs_t_ph: [env.get_evidence_for_image_render(), env.get_evidence_for_image_render()],
-                       prev_action: [[1, 0, 0], [1, 0, 0]]}))
-    print(session.run(pred_ac, {obs_t_ph: [env.get_evidence_for_image_render(), env.get_evidence_for_image_render()],
-                                prev_action: [[1, 0, 0], [1, 0, 0]]}))
+    # print(session.run(one_hot0, {obs_t_ph: [env.get_evidence_for_image_render(), env.get_evidence_for_image_render()],
+    #                              prev_action: [[1, 0, 0], [1, 0, 0]]}))
+    # print(session.run(one_hot, {obs_t_ph: [env.get_evidence_for_image_render(), env.get_evidence_for_image_render()],
+    #                             prev_action: [[1, 0, 0], [1, 0, 0]]}))
+    # print(session.run(tasks, {obs_t_ph: [env.get_evidence_for_image_render(), env.get_evidence_for_image_render()],
+    #                           prev_action: [[1, 0, 0], [1, 0, 0]]}))
+    # print(len(session.run(tasks, {obs_t_ph: [env.get_evidence_for_image_render(), env.get_evidence_for_image_render()],
+    #                               prev_action: [[1, 0, 0], [1, 0, 0]]})))
+    # print(session.run(tf.cast(one_hot, tf.bool),
+    #                   {obs_t_ph: [env.get_evidence_for_image_render(), env.get_evidence_for_image_render()],
+    #                    prev_action: [[1, 0, 0], [1, 0, 0]]}))
+    # print(session.run(pred_ac, {obs_t_ph: [env.get_evidence_for_image_render(), env.get_evidence_for_image_render()],
+    #                             prev_action: [[1, 0, 0], [1, 0, 0]]}))
 
     # summary_writer = tf.summary.FileWriter("graph_logs", graph=tf.get_default_graph())
