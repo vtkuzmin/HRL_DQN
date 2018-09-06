@@ -2,16 +2,25 @@
 
 Combination of the Options RL framework and DQNs
 
-The structure is:
 ## DQN
+
+Implementation of the plain DQN algorithm
 
 ## DQN with Options
 
+Using DQN to represent every option and a separate DQN over options
+
 ## DQN&Options end-to-end
+
+The united architecture
 
 ## environments
 
+Testing environment
+
 ## utils
+
+utils needed for plotting and DQN implementation
 
 /environments contains the testing environment (arm_env_dqn) and the environments for training the options (arm_env_dqn_go_down and arm_env_dqn_lift_cube)
 
