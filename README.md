@@ -1,6 +1,7 @@
 # HRL_DQN
 
-Combination of the Options RL framework and DQNs
+Combination of the Options RL framework and DQNs.
+The project contains of the following parts:
 
 ## DQN
 
@@ -16,17 +17,13 @@ The united architecture
 
 ## environments
 
-Testing environment
+The testing environment used in the experiments
 
 ## utils
 
-utils needed for plotting and DQN implementation
+Utils needed for plotting and DQN implementation.
 
-/environments contains the testing environment (arm_env_dqn) and the environments for training the options (arm_env_dqn_go_down and arm_env_dqn_lift_cube)
-
-/utils contains the file  dqn_utils.py with needed utils to implement the DQN algorithm (with or without options)
-
-    dqn_utils.py
+The file  dqn_utils.py contains the following:
 
 	    huber_loss
 	    Constant Piecewise Linear Schedules
@@ -35,6 +32,12 @@ utils needed for plotting and DQN implementation
 	    initialize_interdependent_variables
 	    ReplayBuffer
 	    ReplayBufferOptions
+
+/environments contains the testing environment (arm_env_dqn) and the environments for training the options (arm_env_dqn_go_down and arm_env_dqn_lift_cube)
+
+/utils contains the file  dqn_utils.py with needed utils to implement the DQN algorithm (with or without options)
+
+
 
 
 To run the plain DQN go for ../DQN/run_dqn.py where the environment, network and learning parameters can be modified;
