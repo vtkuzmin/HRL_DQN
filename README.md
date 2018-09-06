@@ -14,3 +14,11 @@ Combination of the Options RL framework and DQNs
 	    initialize_interdependent_variables
 	    ReplayBuffer
 	    ReplayBufferOptions
+
+
+To run the plain DQN go for ../DQN/run_dqn.py where the environment, network and learning parameters can be modified;
+The learning process for the plain DQN is implemented in the file ../DQN/dqn.py
+
+To run the DQN algorithms with options, firstly the options must be trained running the files ../DQN with Options/train_option1(go down).py and ../DQN with Options/train_option2(lift cube).py
+After that to train the DQN over options run the file ../DQN with Options/train_over_options.py
+The learning process for the DQN over options is implemented in the file ../DQN with Options/dqn_with_options.py and the file ../DQN with Options/option_class.py contains the implementation of the option work
